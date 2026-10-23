@@ -1,0 +1,159 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#7457ed">
+  <meta name="description" content="TECHLINGO — learn technology, creativity, coding, and digital skills through interactive lessons.">
+  <title>TECHLINGO — Level Up Your Skills</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="#">
+        <span class="brand-mark">T</span> TECHLINGO
+      </a>
+      <div class="player-stats">
+        <span>🔥 <b id="streak">1</b></span>
+        <span>⚡ <b id="xp">0</b> XP</span>
+        <span>🪙 <b id="coins">100</b></span>
+      </div>
+    </header>
+
+    <div class="app-layout">
+      <aside class="sidebar">
+        <button class="nav-btn active" data-page="learn">📚 <span>Learn</span></button>
+        <button class="nav-btn" data-page="practice">🎯 <span>Practice Lab</span></button>
+        <button class="nav-btn" data-page="market">📈 <span>Market Sim</span></button>
+        <button class="nav-btn" data-page="projects">🛠️ <span>Projects</span></button>
+        <button class="nav-btn" data-page="achievements">🏆 <span>Achievements</span></button>
+        <div class="sidebar-note">
+          <div class="mascot">🦊</div>
+          <b>Learn by doing!</b>
+          <p>Build skills one lesson at a time.</p>
+        </div>
+      </aside>
+
+      <main class="main-content">
+        <section class="page active" id="page-learn">
+          <div class="hero">
+            <div>
+              <div class="eyebrow">YOUR LEARNING ADVENTURE</div>
+              <h1>Level up your skills.</h1>
+              <p>Explore technology, money, creativity, and more.</p>
+            </div>
+            <div class="hero-art">🚀</div>
+          </div>
+          <div class="section-heading">
+            <div><h2>Your learning paths</h2><p>Choose a course and start learning.</p></div>
+            <span class="pill" id="courseCount">7 PATHS</span>
+          </div>
+          <div class="course-grid" id="courseGrid"></div>
+        </section>
+
+        <section class="page" id="page-practice">
+          <div class="page-heading">
+            <div class="eyebrow">SAFE SANDBOX</div>
+            <h1>Practice Lab 🎯</h1>
+            <p>Try scenarios, test your understanding, and learn from mistakes.</p>
+          </div>
+          <div class="practice-grid" id="practiceGrid"></div>
+          <div class="panel">
+            <h2>📘 Options quick reference</h2>
+            <div class="reference-grid">
+              <div><b>Put</b><p>Gives the buyer the right to sell at the contract's strike price under its terms.</p></div>
+              <div><b>Call</b><p>Gives the buyer the right to buy at the contract's strike price under its terms.</p></div>
+              <div><b>Premium</b><p>The price paid to buy an option contract.</p></div>
+              <div><b>Expiration</b><p>The contract's end date. Time remaining affects an option's value.</p></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="page" id="page-market">
+          <div class="page-heading">
+            <div class="eyebrow">FICTIONAL MARKET</div>
+            <h1>Market Simulator 📈</h1>
+            <p>Explore fictional price movements. No real money or real orders.</p>
+          </div>
+          <div class="market-summary">
+            <div class="metric"><span>Virtual balance</span><strong id="cashBalance">$10,000</strong></div>
+            <div class="metric"><span>Practice portfolio</span><strong id="portfolioValue">$10,000</strong></div>
+            <div class="metric"><span>Market mood</span><strong id="marketMood">Mixed</strong></div>
+          </div>
+          <div class="panel">
+            <div class="section-heading">
+              <div><h2>Fictional stock board</h2><p>These companies and prices are made up.</p></div>
+              <button class="primary-btn" id="advanceMarket">⏩ Advance market</button>
+            </div>
+            <div id="assetList" class="asset-list"></div>
+          </div>
+          <div class="panel">
+            <h2>🧾 Your practice holdings</h2>
+            <div id="holdingsList" class="holdings-list"></div>
+          </div>
+          <div class="panel">
+            <h2>🧠 Options outcome calculator</h2>
+            <p class="muted">Explore a simplified hypothetical expiration example.</p>
+            <div class="calculator-grid">
+              <label>Option type
+                <select id="optionType"><option value="put">Put</option><option value="call">Call</option></select>
+              </label>
+              <label>Hypothetical stock price at expiration ($)
+                <input id="stockAtExpiry" type="number" min="0" step="0.01" value="80">
+              </label>
+              <label>Strike price ($)
+                <input id="strikePrice" type="number" min="0" step="0.01" value="95">
+              </label>
+              <label>Premium per share ($)
+                <input id="premium" type="number" min="0" step="0.01" value="3">
+              </label>
+              <label>Number of contracts
+                <input id="contracts" type="number" min="1" max="100" step="1" value="1">
+              </label>
+            </div>
+            <button class="primary-btn" id="calculateOption">Calculate scenario</button>
+            <div id="optionResult" class="result-box" aria-live="polite">Enter values and calculate a hypothetical outcome.</div>
+            <p class="small-print">Educational example only. Assumes standard 100-share contracts held to expiration and excludes fees and taxes. Real contracts can differ.</p>
+          </div>
+        </section>
+
+        <section class="page" id="page-projects">
+          <div class="page-heading">
+            <div class="eyebrow">BUILD SOMETHING</div>
+            <h1>Projects 🛠️</h1>
+            <p>Put what you've learned into practice.</p>
+          </div>
+          <div class="project-grid" id="projectGrid"></div>
+        </section>
+
+        <section class="page" id="page-achievements">
+          <div class="page-heading">
+            <div class="eyebrow">YOUR PROGRESS</div>
+            <h1>Achievements 🏆</h1>
+            <p>Every lesson is progress. Keep going!</p>
+          </div>
+          <div class="progress-panel panel">
+            <div class="progress-top"><span>Overall progress</span><b id="progressLabel">0%</b></div>
+            <div class="progress-track"><div id="progressBar"></div></div>
+            <p id="progressText">Start a lesson to begin your journey.</p>
+          </div>
+          <div class="achievement-grid" id="achievementGrid"></div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="lessonModal" aria-hidden="true">
+    <div class="lesson-modal" role="dialog" aria-modal="true" aria-labelledby="lessonTitle">
+      <button class="close-btn" id="closeLesson" aria-label="Close lesson">✕</button>
+      <div id="lessonContent"></div>
+    </div>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="script.js"></script>
+</body>
+</html>
