@@ -1,4 +1,3 @@
-
 (() => {
   "use strict";
 
@@ -87,10 +86,29 @@
     }
   ];
 
+  const petCatalog = [
+    { id:"tech-pup", name:"Tech Pup", rarity:"Common", emoji:"🐶", cost:0, xpBoost:3, coinBoost:2, quote:"Small paws. Big ideas." },
+    { id:"code-turtle", name:"Code Turtle", rarity:"Uncommon", emoji:"🐢", cost:250, xpBoost:5, coinBoost:3, quote:"Slow, steady, and clever." },
+    { id:"byte-fox", name:"Byte Fox", rarity:"Rare", emoji:"🦊", cost:450, xpBoost:8, coinBoost:5, quote:"Quick thinking is its superpower." },
+    { id:"data-owl", name:"Data Owl", rarity:"Super Rare", emoji:"🦉", cost:650, xpBoost:10, coinBoost:7, quote:"Wisdom in every wingbeat." },
+    { id:"pixel-dragon", name:"Pixel Dragon", rarity:"Ultra Rare", emoji:"🐉", cost:850, xpBoost:14, coinBoost:8, quote:"A tiny dragon with giant ideas." },
+    { id:"dream-unicorn", name:"Dream Unicorn", rarity:"Legendary", emoji:"🦄", cost:1100, xpBoost:18, coinBoost:10, quote:"Make your next big idea sparkle." },
+    { id:"circuit-cat", name:"Circuit Cat", rarity:"Elite", emoji:"🐈‍⬛", cost:1350, xpBoost:19, coinBoost:13, quote:"A purr-fectly clever companion." },
+    { id:"crystal-cub", name:"Crystal Cub", rarity:"Elite", emoji:"🐻", cost:0, xpBoost:20, coinBoost:12, quote:"A crystal heart. A limitless future." },
+    { id:"nova-fox", name:"Nova Fox", rarity:"Cosmic", emoji:"🦊", cost:0, xpBoost:25, coinBoost:15, quote:"Not just a pet… a piece of the universe." }
+  ];
+
+  const defaultPetProgress = Object.fromEntries(petCatalog.map(pet => [pet.id, {
+    unlocked: ["tech-pup", "crystal-cub", "nova-fox"].includes(pet.id), level: 1
+  }]));
+
+  let selectedPet = "nova-fox";
+  let activeRarity = "all";
+
   let state = {
     xp: 0, coins: 100, streak: 1, completed: [], achievements: [],
     cash: 10000, stocks: {}, prices: { NOVA: 42, PIXL: 76, ORBIT: 118 },
-    marketTurn: 0, lessonCorrect: 0
+    marketTurn: 0, lessonCorrect: 0, pets: defaultPetProgress, equippedPet: "nova-fox"
   };
 
   try {
@@ -106,18 +124,32 @@
   if (!Array.isArray(state.achievements)) state.achievements = [];
   if (!state.stocks || typeof state.stocks !== "object") state.stocks = {};
   if (!state.prices || typeof state.prices !== "object") state.prices = { NOVA: 42, PIXL: 76, ORBIT: 118 };
+  if (!state.pets || typeof state.pets !== "object") state.pets = {};
+
+  state.pets = Object.fromEntries(petCatalog.map(pet => [pet.id, {
+    ...defaultPetProgress[pet.id], ...(state.pets[pet.id] || {})
+  }]));
+
+  if (!petCatalog.some(pet => pet.id === state.equippedPet && state.pets[pet.id].unlocked)) {
+    state.equippedPet = "nova-fox";
+  }
+  if (!state.pets[state.equippedPet]) state.pets[state.equippedPet] = { unlocked: true, level: 1 };
 
   const money = n => "$" + Number(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const escapeHTML = s => String(s).replace(/[&<>"']/g, c => ({
     "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
   }[c]));
+
   const totalLessons = () => courses.reduce((n, c) => n + c.lessons.length, 0);
   const isDone = key => state.completed.includes(key);
   const doneCount = () => state.completed.length;
 
   function save() {
-    try { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); }
-    catch (e) { console.warn("Progress could not be saved.", e); }
+    try {
+      localStorage.setItem(SAVE_KEY, JSON.stringify(state));
+    } catch (e) {
+      console.warn("Progress could not be saved.", e);
+    }
   }
 
   let toastTimer;
@@ -133,10 +165,21 @@
     $("xp").textContent = state.xp;
     $("coins").textContent = state.coins;
     $("streak").textContent = state.streak;
+
+    const playerLevel = Math.floor(state.xp / 100) + 1;
+    const levelProgress = state.xp % 100;
+    $("playerLevel").textContent = playerLevel;
+    $("levelXP").textContent = levelProgress;
+    $("levelBar").style.width = levelProgress + "%";
+
+    $("petCoins").textContent = state.coins;
     $("cashBalance").textContent = money(state.cash);
+
     const stockValue = Object.entries(state.stocks).reduce((sum, [symbol, quantity]) =>
       sum + (state.prices[symbol] || 0) * quantity, 0);
+
     $("portfolioValue").textContent = money(state.cash + stockValue);
+
     const pct = Math.round(doneCount() / totalLessons() * 100);
     $("progressLabel").textContent = pct + "%";
     $("progressBar").style.width = pct + "%";
@@ -145,9 +188,11 @@
 
   function renderCourses() {
     $("courseCount").textContent = courses.length + " PATHS";
+
     $("courseGrid").innerHTML = courses.map(c => {
       const done = c.lessons.filter((_, i) => isDone(c.id + ":" + i)).length;
       const pct = Math.round(done / c.lessons.length * 100);
+
       return `<article class="course-card" data-course="${c.id}" style="--accent:${c.color};--tint:${c.tint}">
         <div class="card-top">
           <div class="course-icon">${c.icon}</div>
@@ -159,6 +204,7 @@
         <div class="mini-track"><div style="width:${pct}%;background:${c.color}"></div></div>
       </article>`;
     }).join("");
+
     $("courseGrid").querySelectorAll("[data-course]").forEach(card =>
       card.addEventListener("click", () => openCourse(card.dataset.course)));
   }
@@ -176,6 +222,7 @@
        <h3>${escapeHTML(p.title)}</h3><p>${escapeHTML(p.desc)}</p>
        <button class="secondary-btn" data-practice="${i}">Start practice →</button></article>`
     ).join("");
+
     $("practiceGrid").querySelectorAll("[data-practice]").forEach(btn =>
       btn.addEventListener("click", () => practiceItems[Number(btn.dataset.practice)].action()));
   }
@@ -189,10 +236,12 @@
   function openCourse(id) {
     activeCourse = courses.find(c => c.id === id);
     if (!activeCourse) return;
+
     activeIndex = 0;
     answered = false;
     sessionCorrect = 0;
     sessionRewarded = false;
+
     renderLesson();
     $("lessonModal").classList.add("open");
     $("lessonModal").setAttribute("aria-hidden", "false");
@@ -207,9 +256,11 @@
 
   function renderLesson() {
     if (!activeCourse) return;
+
     const lesson = activeCourse.lessons[activeIndex];
     const key = activeCourse.id + ":" + activeIndex;
     const done = isDone(key);
+
     $("lessonContent").innerHTML = `
       <div class="eyebrow">${escapeHTML(activeCourse.tag)}</div>
       <div class="lesson-progress"><div style="width:${((activeIndex + 1) / activeCourse.lessons.length) * 100}%"></div></div>
@@ -224,27 +275,39 @@
         <span class="lesson-count">${activeCourse.icon} ${escapeHTML(activeCourse.title)}</span>
         <button class="primary-btn" id="lessonNext" disabled>${activeIndex === activeCourse.lessons.length - 1 ? "Finish course" : "Next lesson →"}</button>
       </div>`;
+
     $("lessonContent").querySelectorAll("[data-answer]").forEach(btn =>
       btn.addEventListener("click", () => answerLesson(Number(btn.dataset.answer))));
+
     $("lessonNext").addEventListener("click", nextLesson);
     answered = false;
   }
 
   function answerLesson(choice) {
     if (!activeCourse || answered) return;
+
     answered = true;
     const lesson = activeCourse.lessons[activeIndex];
     const key = activeCourse.id + ":" + activeIndex;
     const correct = choice === lesson[3];
     const wasDone = isDone(key);
+
     if (correct) {
       sessionCorrect++;
+
       if (!wasDone) {
-        state.xp += 20;
-        state.coins += 10;
+        const companion = petCatalog.find(pet => pet.id === state.equippedPet) || petCatalog.find(pet => pet.id === "nova-fox");
+        const companionProgress = state.pets[state.equippedPet] || { level: 1 };
+        const boostLevel = Math.max(0, Number(companionProgress.level || 1) - 1);
+        const xpReward = Math.round(20 * (1 + (companion.xpBoost + boostLevel) / 100));
+        const coinReward = Math.round(10 * (1 + (companion.coinBoost + Math.floor(boostLevel / 2)) / 100));
+
+        state.xp += xpReward;
+        state.coins += coinReward;
         state.lessonCorrect++;
         state.completed.push(key);
-        toast("Correct! +20 XP and +10 coins 🎉");
+
+        toast(`Correct! +${xpReward} XP and +${coinReward} coins ${companion.emoji}`);
       } else {
         toast("Correct! You've already earned rewards for this lesson.");
       }
@@ -261,27 +324,34 @@
 
     $("lessonFeedback").innerHTML = `<div class="explanation"><b>${correct ? "✅ Correct!" : "💡 Let's learn:"}</b><br>${escapeHTML(lesson[4])}</div>`;
     $("lessonNext").disabled = false;
+
     save();
     updateStats();
     renderCourses();
     refreshAchievements();
+    renderPets();
   }
 
   function nextLesson() {
     if (!activeCourse || $("lessonNext").disabled) return;
+
     if (activeIndex < activeCourse.lessons.length - 1) {
       activeIndex++;
       renderLesson();
       return;
     }
-    const title = activeCourse.title;
+
+    const finishedCourse = activeCourse;
+    const title = finishedCourse.title;
+    const courseComplete = finishedCourse.lessons.every((_, i) => isDone(finishedCourse.id + ":" + i));
+
     closeLesson();
+
     if (!sessionRewarded) {
       sessionRewarded = true;
-      if (activeCourse.lessons.every((_, i) => isDone(activeCourse.id + ":" + i))) {
-        toast(`Course review complete: ${title}! 🏆`);
-      }
+      if (courseComplete) toast(`Course review complete: ${title}! 🏆`);
     }
+
     renderCourses();
     renderProjects();
     refreshAchievements();
@@ -294,36 +364,44 @@
       { symbol: "PIXL", name: "Pixel Studios", icon: "🎨" },
       { symbol: "ORBIT", name: "Orbit Energy", icon: "🪐" }
     ];
+
     $("assetList").innerHTML = assets.map(a => {
       const price = state.prices[a.symbol];
+
       return `<div class="asset-row">
         <div class="asset-info"><div class="asset-icon">${a.icon}</div><div><b>${a.symbol}</b><small>${a.name} · fictional</small></div></div>
         <div class="asset-price">${money(price)}<small class="muted">Simulated price</small></div>
         <button class="secondary-btn" data-buy="${a.symbol}">Practice buy</button>
       </div>`;
     }).join("");
+
     $("assetList").querySelectorAll("[data-buy]").forEach(btn =>
       btn.addEventListener("click", () => buyPracticeStock(btn.dataset.buy)));
 
     const holdings = Object.entries(state.stocks).filter(([, qty]) => qty > 0);
+
     $("holdingsList").innerHTML = holdings.length ? holdings.map(([symbol, qty]) =>
       `<div class="asset-row"><div class="asset-info"><div class="asset-icon">📦</div><div><b>${symbol}</b><small>${qty} practice share${qty === 1 ? "" : "s"}</small></div></div><div class="asset-price">${money((state.prices[symbol] || 0) * qty)}<small class="muted">Current simulated value</small></div><button class="secondary-btn" data-sell="${symbol}">Practice sell 1</button></div>`
     ).join("") : `<div class="empty-state">No practice holdings yet. Try a fictional stock above to learn how a portfolio works.</div>`;
 
     $("holdingsList").querySelectorAll("[data-sell]").forEach(btn =>
       btn.addEventListener("click", () => sellPracticeStock(btn.dataset.sell)));
+
     $("marketMood").textContent = state.marketTurn === 0 ? "Starting" : (state.marketTurn % 2 ? "Mixed" : "Changing");
     updateStats();
   }
 
   function buyPracticeStock(symbol) {
     const price = state.prices[symbol];
+
     if (!price || state.cash < price) {
       toast("Not enough virtual cash for this practice purchase.");
       return;
     }
+
     state.cash -= price;
     state.stocks[symbol] = (state.stocks[symbol] || 0) + 1;
+
     save();
     renderMarket();
     toast("Fictional share added to your practice portfolio.");
@@ -331,21 +409,25 @@
 
   function sellPracticeStock(symbol) {
     if (!state.stocks[symbol]) return;
+
     state.stocks[symbol]--;
     state.cash += state.prices[symbol] || 0;
+
     if (state.stocks[symbol] <= 0) delete state.stocks[symbol];
+
     save();
     renderMarket();
     toast("Fictional share sold in the simulator.");
   }
 
   function advanceMarket() {
-    const old = { ...state.prices };
     Object.keys(state.prices).forEach(symbol => {
       const move = (Math.random() * 0.16) - 0.08;
       state.prices[symbol] = Math.max(1, Math.round(state.prices[symbol] * (1 + move) * 100) / 100);
     });
+
     state.marketTurn++;
+
     save();
     renderMarket();
     toast("The fictional market moved. Prices can rise or fall.");
@@ -393,6 +475,7 @@
     $("projectGrid").innerHTML = projects.map((p, i) =>
       `<article class="project-card"><div class="practice-icon">${p.icon}</div><h3>${escapeHTML(p.title)}</h3><p>${escapeHTML(p.desc)}</p><button class="secondary-btn" data-project="${i}">Open project →</button></article>`
     ).join("");
+
     $("projectGrid").querySelectorAll("[data-project]").forEach(btn =>
       btn.addEventListener("click", () => openProject(Number(btn.dataset.project))));
   }
@@ -400,20 +483,247 @@
   function openProject(index) {
     const p = projects[index];
     const content = $("lessonContent");
+
     $("lessonModal").classList.add("open");
     $("lessonModal").setAttribute("aria-hidden", "false");
+
     content.innerHTML = `<div class="eyebrow">TECHLINGO PROJECT</div>
       <h2 id="lessonTitle">${escapeHTML(p.icon + " " + p.title)}</h2>
       <p class="lesson-prompt">${escapeHTML(p.desc)}<br><br><b>Your mission:</b> ${escapeHTML(p.goal)}</p>
       <label>Your project notes<textarea id="projectNotes" rows="5" placeholder="Write your ideas here..."></textarea></label>
       <div class="lesson-bottom"><span class="lesson-count">Take your time</span><button class="primary-btn" id="saveProject">Save project</button></div>`;
+
     $("projectNotes").value = state["project_" + index] || "";
+
     $("saveProject").addEventListener("click", () => {
       state["project_" + index] = $("projectNotes").value;
       save();
       closeLesson();
       toast("Project notes saved on this device.");
     });
+  }
+
+  const rarityClass = rarity => "rarity-" + rarity.toLowerCase().replace(/\s+/g, "-");
+  const petState = id => state.pets[id] || { unlocked: false, level: 1 };
+  const petById = id => petCatalog.find(pet => pet.id === id) || petCatalog[0];
+  const petLevel = id => Math.max(1, Number(petState(id).level) || 1);
+  const petUpgradeCost = id => 150 + (petLevel(id) - 1) * 125;
+  const ownedPetCount = () => petCatalog.filter(pet => petState(pet.id).unlocked).length;
+  const petXPBoost = pet => pet.xpBoost + (petLevel(pet.id) - 1);
+  const petCoinBoost = pet => pet.coinBoost + Math.floor((petLevel(pet.id) - 1) / 2);
+
+  function petArtwork(pet, suffix) {
+    const gid = "g-" + pet.id.replace(/[^a-z0-9-]/gi, "") + "-" + suffix;
+
+    if (pet.id === "nova-fox") return `<svg class="pet-svg" viewBox="0 0 260 260" role="img" aria-label="Nova Fox, a cosmic fox">
+      <defs>
+        <linearGradient id="${gid}" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fff1ff"/><stop offset=".3" stop-color="#e35dff"/><stop offset=".64" stop-color="#8246ff"/><stop offset="1" stop-color="#2ce8ff"/></linearGradient>
+        <linearGradient id="${gid}-face" x1="0" y1="0" x2="0.9" y2="1"><stop stop-color="#fe91ff"/><stop offset=".5" stop-color="#8b56ff"/><stop offset="1" stop-color="#2737bf"/></linearGradient>
+        <radialGradient id="${gid}-eye"><stop stop-color="#fff"/><stop offset=".35" stop-color="#72fbff"/><stop offset="1" stop-color="#4382ff"/></radialGradient>
+        <filter id="${gid}-glow"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+      </defs>
+      <g opacity=".95" filter="url(#${gid}-glow)">
+        <path d="M151 191 C212 198 234 154 218 120 C209 94 191 85 176 79 C202 117 191 147 153 148Z" fill="url(#${gid})" stroke="#e7a9ff" stroke-width="3"/>
+        <path d="M174 158 C206 152 210 127 193 104 C227 116 233 153 207 176 C194 188 177 188 163 183Z" fill="#363bff" opacity=".9"/>
+        <ellipse cx="129" cy="190" rx="57" ry="46" fill="url(#${gid})" stroke="#eca5ff" stroke-width="3"/>
+        <path d="M82 94 L79 28 Q80 19 89 28 L121 69 Q136 65 150 70 L183 29 Q190 22 191 37 L190 104Z" fill="url(#${gid})" stroke="#ffb4ff" stroke-width="4" stroke-linejoin="round"/>
+        <path d="M91 73 L91 45 L112 75Z" fill="#6a39ca"/><path d="M170 76 L185 44 L180 83Z" fill="#5c3cc8"/>
+        <path d="M76 95 Q129 49 190 96 L188 136 Q176 178 132 184 Q88 176 76 136Z" fill="url(#${gid}-face)" stroke="#e7a9ff" stroke-width="4"/>
+        <path d="M100 126 Q115 115 124 132 Q119 148 104 145Z" fill="#fff"/><path d="M143 132 Q153 115 168 126 L164 145 Q149 148 143 132Z" fill="#fff"/>
+        <ellipse cx="111" cy="132" rx="8" ry="12" fill="url(#${gid}-eye)"/><ellipse cx="155" cy="132" rx="8" ry="12" fill="url(#${gid}-eye)"/>
+        <circle cx="113" cy="128" r="3" fill="#fff"/><circle cx="157" cy="128" r="3" fill="#fff"/>
+        <path d="M119 151 Q132 160 146 151 Q140 174 130 170 Q121 169 119 151Z" fill="#f7e8ff"/>
+        <path d="M124 152 L133 152 L129 158Z" fill="#33134d"/>
+        <path d="M105 91 Q128 78 151 91" fill="none" stroke="#8af9ff" stroke-width="4" stroke-linecap="round"/>
+        <path d="M128 80 L134 91 L147 92 L137 100 L140 112 L128 105 L117 112 L120 99 L110 92 L123 91Z" fill="#fff5a7" stroke="#fff" stroke-width="2"/>
+      </g>
+      <ellipse cx="130" cy="235" rx="68" ry="9" fill="#4d39ff" opacity=".5"/>
+      <g fill="#fff"><path d="M48 52 l4 10 10 4 -10 4 -4 10 -4 -10 -10 -4 10 -4Z"/><path d="M218 54 l3 7 7 3 -7 3 -3 7 -3 -7 -7 -3 7 -3Z"/><circle cx="66" cy="147" r="2"/><circle cx="211" cy="190" r="3"/></g>
+    </svg>`;
+
+    if (pet.id === "crystal-cub") return `<svg class="pet-svg" viewBox="0 0 260 260" role="img" aria-label="Crystal Cub, a purple cub with blue crystals">
+      <defs>
+        <linearGradient id="${gid}" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f2bfff"/><stop offset=".45" stop-color="#a16bff"/><stop offset="1" stop-color="#6138bb"/></linearGradient>
+        <linearGradient id="${gid}-gem" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#e6ffff"/><stop offset=".38" stop-color="#74eaff"/><stop offset="1" stop-color="#3561ff"/></linearGradient>
+        <filter id="${gid}-glow"><feGaussianBlur stdDeviation="3.5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+      </defs>
+      <g filter="url(#${gid}-glow)">
+        <path d="M72 151 Q40 177 66 217 L94 199 L103 166Z" fill="#286add" stroke="#8bcbff" stroke-width="3"/>
+        <path d="M183 151 Q222 172 197 215 L169 198 L160 165Z" fill="#286add" stroke="#8bcbff" stroke-width="3"/>
+        <ellipse cx="92" cy="191" rx="21" ry="28" fill="url(#${gid})"/><ellipse cx="166" cy="191" rx="21" ry="28" fill="url(#${gid})"/>
+        <circle cx="88" cy="89" r="28" fill="url(#${gid})" stroke="#e0b5ff" stroke-width="4"/><circle cx="172" cy="89" r="28" fill="url(#${gid})" stroke="#e0b5ff" stroke-width="4"/>
+        <circle cx="88" cy="89" r="13" fill="#8d4de2"/><circle cx="172" cy="89" r="13" fill="#8d4de2"/>
+        <rect x="66" y="83" width="128" height="112" rx="27" fill="url(#${gid})" stroke="#e5baff" stroke-width="4"/>
+        <path d="M81 92 Q130 111 179 92" fill="none" stroke="#ffd8ff" stroke-width="3" opacity=".7"/>
+        <path d="M91 66 L88 27 Q88 19 94 25 L116 48 L129 14 Q133 4 138 16 L151 49 L174 24 Q180 19 179 31 L175 70Z" fill="url(#${gid}-gem)" stroke="#d6ffff" stroke-width="3" stroke-linejoin="round"/>
+        <path d="M94 29 L111 49 L96 57Z" fill="#fff" opacity=".72"/><path d="M133 18 L136 53 L119 49Z" fill="#54baff" opacity=".8"/><path d="M175 30 L151 49 L168 60Z" fill="#e9ffff" opacity=".75"/>
+        <ellipse cx="103" cy="131" rx="10" ry="13" fill="#191539"/><ellipse cx="157" cy="131" rx="10" ry="13" fill="#191539"/>
+        <circle cx="106" cy="127" r="3.5" fill="#fff"/><circle cx="160" cy="127" r="3.5" fill="#fff"/>
+        <circle cx="89" cy="150" r="7" fill="#ff9bcf" opacity=".8"/><circle cx="171" cy="150" r="7" fill="#ff9bcf" opacity=".8"/>
+        <ellipse cx="130" cy="147" rx="13" ry="10" fill="#f7d9ff"/><path d="M124 145 Q130 151 136 145" fill="none" stroke="#503078" stroke-width="3" stroke-linecap="round"/>
+        <path d="M82 175 Q130 196 178 175" fill="none" stroke="#e7c4ff" stroke-width="3" opacity=".8"/>
+        <path d="M70 173 Q42 166 50 144 Q62 137 77 153Z" fill="#8750e7" stroke="#c8a2ff" stroke-width="3"/><path d="M190 173 Q218 166 210 144 Q198 137 183 153Z" fill="#8750e7" stroke="#c8a2ff" stroke-width="3"/>
+      </g>
+      <g fill="#fff"><path d="M38 57 l4 10 10 4 -10 4 -4 10 -4 -10 -10 -4 10 -4Z"/><path d="M215 93 l3 7 7 3 -7 3 -3 7 -3 -7 -7 -3 7 -3Z"/><circle cx="48" cy="182" r="3"/><circle cx="218" cy="174" r="2"/></g>
+      <ellipse cx="130" cy="235" rx="68" ry="9" fill="#5c3dff" opacity=".42"/>
+    </svg>`;
+
+    return `<div class="pet-emoji-art" role="img" aria-label="${escapeHTML(pet.name)}">${pet.emoji}</div>`;
+  }
+
+  function renderPetCollection() {
+    const visiblePets = activeRarity === "all" ? petCatalog : petCatalog.filter(pet => pet.rarity === activeRarity);
+
+    $("petGrid").innerHTML = visiblePets.map(pet => {
+      const progress = petState(pet.id);
+      const unlocked = !!progress.unlocked;
+      const selected = selectedPet === pet.id;
+
+      return `<article class="pet-card ${selected ? "selected" : ""} ${unlocked ? "" : "locked"}" data-pet="${pet.id}" tabindex="0" role="button" aria-label="${escapeHTML(pet.name)} ${unlocked ? "select pet" : "locked pet"}">
+        ${unlocked ? `<span class="pet-state-tag">${state.equippedPet === pet.id ? "EQUIPPED" : "OWNED"}</span>` : ""}
+        <div class="pet-card-art">${petArtwork(pet, "card")}</div>
+        <div class="pet-card-name">${escapeHTML(pet.name)}</div>
+        <span class="rarity-badge ${rarityClass(pet.rarity)}">${escapeHTML(pet.rarity)}</span>
+        ${unlocked ? `<div class="pet-card-lock">LEVEL ${petLevel(pet.id)}</div>` : `<span class="pet-card-price">🪙 ${pet.cost.toLocaleString("en-US")}</span>`}
+      </article>`;
+    }).join("") || `<div class="pet-empty">No pets in this rarity yet.</div>`;
+
+    $("petGrid").querySelectorAll("[data-pet]").forEach(card => {
+      const select = () => {
+        const id = card.dataset.pet;
+
+        if (!petState(id).unlocked) {
+          toast("Unlock " + petById(id).name + " with coins to add it to your team.");
+          return;
+        }
+
+        selectedPet = id;
+        renderPets();
+      };
+
+      card.addEventListener("click", select);
+      card.addEventListener("keydown", event => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          select();
+        }
+      });
+    });
+  }
+
+  function renderPetFeature() {
+    const pet = petById(selectedPet);
+    const progress = petState(pet.id);
+    const unlocked = !!progress.unlocked;
+    const level = petLevel(pet.id);
+    const cost = petUpgradeCost(pet.id);
+    const xpBoost = petXPBoost(pet);
+    const coinBoost = petCoinBoost(pet);
+    const isEquipped = state.equippedPet === pet.id;
+
+    const upgrades = [
+      [5, "✨", "Cosmic Aura", "A brighter glow around your companion"],
+      [10, "🌌", "Galaxy Trail", "Leave a shimmering trail behind"],
+      [15, "⚡", "Star Power", "Unlock a stronger learning boost"],
+      [20, "🌀", "Dimension Shift", "Reach the ultimate pet evolution"]
+    ];
+
+    const unlockedUpgrades = upgrades.filter(item => level >= item[0]);
+
+    $("petFeature").innerHTML = `<div class="pet-feature-content">
+      <div class="pet-feature-top"><div><div class="eyebrow">${unlocked ? (isEquipped ? "YOUR ACTIVE COMPANION" : "YOUR COMPANION") : "NEW DISCOVERY"}</div><h2 class="pet-feature-name">${escapeHTML(pet.name)}</h2></div><span class="rarity-badge ${rarityClass(pet.rarity)}">${escapeHTML(pet.rarity)}</span></div>
+      <div class="pet-feature-art">${petArtwork(pet, "hero")}</div>
+      <p class="pet-quote">“${escapeHTML(pet.quote)}”</p>
+      <div class="pet-level-card"><div class="pet-level-row"><h3>${unlocked ? "Level " + level : "Locked pet"}</h3><span>${unlocked ? (level >= 20 ? "MAX LEVEL" : (20 - level) + " LEVELS TO MAX") : "Unlock to begin"}</span></div><div class="pet-level-track"><div style="width:${unlocked ? Math.min(100, level / 20 * 100) : 0}%"></div></div></div>
+      ${unlocked ? `<div class="pet-detail-grid">
+        <div class="pet-stat"><span class="pet-stat-icon">⚡</span><div><span>XP boost</span><b class="boost">+${xpBoost}%</b></div></div>
+        <div class="pet-stat"><span class="pet-stat-icon">🪙</span><div><span>Coin boost</span><b class="boost">+${coinBoost}%</b></div></div>
+        <div class="pet-stat"><span class="pet-stat-icon">📚</span><div><span>Lesson focus</span><b>+${Math.min(40, Math.round(xpBoost * .8))}%</b></div></div>
+        <div class="pet-stat"><span class="pet-stat-icon">💖</span><div><span>Bond level</span><b>${level}/20</b></div></div>
+      </div>
+      <div class="pet-upgrades"><h3>🔒 Evolution upgrades</h3>${upgrades.map(item => `<div class="pet-upgrade-row ${level >= item[0] ? "" : "locked-upgrade"}"><div class="pet-upgrade-icon">${level >= item[0] ? item[1] : "🔒"}</div><div><b>${item[2]}</b><small>${level >= item[0] ? "Unlocked! " : "Unlocks at level " + item[0] + " · "}${item[3]}</small></div></div>`).join("")}</div>
+      <div class="pet-actions"><button class="pet-upgrade-btn" id="upgradePetBtn" ${level >= 20 || state.coins < cost ? "disabled" : ""}>${level >= 20 ? "✨ Max level reached" : `⬆ Upgrade Pet · 🪙 ${cost.toLocaleString("en-US")}`}</button><button class="pet-equip-btn ${isEquipped ? "equipped" : ""}" id="equipPetBtn" ${isEquipped ? "disabled" : ""}>${isEquipped ? "✓ Equipped" : "🐾 Equip pet"}</button></div>` : `<div class="pet-upgrades"><h3>✨ Pet discovery</h3><p style="color:#c0bce8;font-size:13px;line-height:1.6;margin:0 0 12px">Add ${escapeHTML(pet.name)} to your team. Its XP and coin boosts apply when you equip it.</p><button class="pet-upgrade-btn" style="width:100%" id="unlockPetBtn" ${state.coins < pet.cost ? "disabled" : ""}>${pet.cost === 0 ? "Unlock pet" : `🔓 Unlock · 🪙 ${pet.cost.toLocaleString("en-US")}`}</button></div>`}
+    </div>`;
+
+    const upgradeButton = $("upgradePetBtn");
+    if (upgradeButton) upgradeButton.addEventListener("click", () => upgradePet(pet.id));
+
+    const equipButton = $("equipPetBtn");
+    if (equipButton) equipButton.addEventListener("click", () => equipPet(pet.id));
+
+    const unlockButton = $("unlockPetBtn");
+    if (unlockButton) unlockButton.addEventListener("click", () => unlockPet(pet.id));
+  }
+
+  function renderPets() {
+    $("petCoins").textContent = state.coins;
+    $("petCount").textContent = ownedPetCount() + " OWNED";
+    renderPetCollection();
+    renderPetFeature();
+  }
+
+  function unlockPet(id) {
+    const pet = petById(id);
+    const progress = petState(id);
+
+    if (progress.unlocked) {
+      selectedPet = id;
+      renderPets();
+      return;
+    }
+
+    if (state.coins < pet.cost) {
+      toast(`You need ${pet.cost - state.coins} more coins for ${pet.name}.`);
+      return;
+    }
+
+    state.coins -= pet.cost;
+    state.pets[id] = { ...progress, unlocked: true, level: 1 };
+    selectedPet = id;
+
+    save();
+    updateStats();
+    renderPets();
+    toast(`${pet.name} joined your collection! ${pet.emoji}`);
+  }
+
+  function equipPet(id) {
+    if (!petState(id).unlocked) {
+      toast("Unlock this pet before equipping it.");
+      return;
+    }
+
+    state.equippedPet = id;
+    selectedPet = id;
+
+    save();
+    updateStats();
+    renderPets();
+    toast(`${petById(id).name} is now your learning companion!`);
+  }
+
+  function upgradePet(id) {
+    const progress = petState(id);
+    const level = petLevel(id);
+
+    if (!progress.unlocked || level >= 20) {
+      toast("This pet is already at its maximum level.");
+      return;
+    }
+
+    const cost = petUpgradeCost(id);
+    if (state.coins < cost) {
+      toast(`You need ${cost - state.coins} more coins to upgrade this pet.`);
+      return;
+    }
+
+    state.coins -= cost;
+    state.pets[id] = { ...progress, level: level + 1 };
+
+    save();
+    updateStats();
+    renderPets();
+    toast(`${petById(id).name} evolved to level ${level + 1}! ✨`);
   }
 
   const achievementList = [
@@ -432,7 +742,9 @@
         toast("Achievement unlocked: " + a.title + " " + a.icon);
       }
     });
+
     save();
+
     $("achievementGrid").innerHTML = achievementList.map(a => {
       const unlocked = state.achievements.includes(a.id);
       return `<div class="achievement-card ${unlocked ? "" : "locked"}"><div class="achievement-icon">${a.icon}</div><div><h3>${unlocked ? "✓ " : "🔒 "}${escapeHTML(a.title)}</h3><p>${escapeHTML(a.desc)}</p></div></div>`;
@@ -442,21 +754,26 @@
   function showPage(page) {
     document.querySelectorAll(".page").forEach(el => el.classList.remove("active"));
     document.querySelectorAll(".nav-btn").forEach(el => el.classList.toggle("active", el.dataset.page === page));
+
     const target = $("page-" + page);
     if (target) target.classList.add("active");
+
     if (page === "market") renderMarket();
     if (page === "achievements") refreshAchievements();
     if (page === "projects") renderProjects();
     if (page === "learn") renderCourses();
+    if (page === "pets") renderPets();
   }
 
   document.querySelectorAll(".nav-btn").forEach(btn =>
     btn.addEventListener("click", () => showPage(btn.dataset.page)));
 
   $("closeLesson").addEventListener("click", closeLesson);
+
   $("lessonModal").addEventListener("click", e => {
     if (e.target === $("lessonModal")) closeLesson();
   });
+
   document.addEventListener("keydown", e => {
     if (e.key === "Escape" && $("lessonModal").classList.contains("open")) closeLesson();
   });
@@ -464,12 +781,21 @@
   $("advanceMarket").addEventListener("click", advanceMarket);
   $("calculateOption").addEventListener("click", calculateOption);
 
+  $("petRarityFilters").querySelectorAll("[data-rarity]").forEach(button =>
+    button.addEventListener("click", () => {
+      activeRarity = button.dataset.rarity;
+      $("petRarityFilters").querySelectorAll("[data-rarity]").forEach(item =>
+        item.classList.toggle("active", item === button));
+      renderPetCollection();
+    }));
+
   renderCourses();
   renderPractice();
   renderProjects();
   renderMarket();
   refreshAchievements();
   updateStats();
+  renderPets();
 
-  console.log("TECHLINGO loaded successfully. Options lessons are included.");
+  console.log("TECHLINGO loaded successfully. Lessons, simulator, and pet collection are ready.");
 })();
